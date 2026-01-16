@@ -34,6 +34,7 @@ export const Scene: React.FC<SceneProps> = ({
 }) => {
   const [isModelReady, setIsModelReady] = useState(false);
   const [dpr, setDpr] = useState<number>(1);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
 
   const isMacChrome = useMemo(
     () =>
@@ -51,6 +52,25 @@ export const Scene: React.FC<SceneProps> = ({
     const capped = Math.min(deviceDpr, cap);
     setDpr(capped);
   }, [isMacChrome, renderMode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia?.('(max-width: 640px)');
+    const handler = (e: MediaQueryList | MediaQueryListEvent) => setIsMobile((e as any).matches ?? (e as MediaQueryList).matches);
+    if (mq) {
+      setIsMobile(mq.matches);
+      if (mq.addEventListener) mq.addEventListener('change', handler as any);
+      else mq.addListener(handler as any);
+      return () => {
+        if (mq.removeEventListener) mq.removeEventListener('change', handler as any);
+        else mq.removeListener(handler as any);
+      };
+    }
+    const onResize = () => setIsMobile(window.innerWidth <= 640);
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const ringPosition = new THREE.Vector3(0.1, -0.29, -0.3);
   // reduce default visual size of the ring on-screen
@@ -107,10 +127,23 @@ export const Scene: React.FC<SceneProps> = ({
         }}
         camera={{ position: [0, 2, 6], fov: 45 }}
         className="w-full h-full select-none"
-        style={{
-          opacity: isModelReady ? 1 : 0,
-          transition: "opacity 0.5s ease-in-out",
-        }}
+        style={
+          (() => {
+            const base: React.CSSProperties = {
+              opacity: isModelReady ? 1 : 0,
+              transition: "opacity 0.5s ease-in-out",
+            };
+            if (!isMobile) {
+              return {
+                ...base,
+                transform: 'translateX(50px) translateY(-50px)',
+                marginLeft: '250px',
+                marginTop: '40px',
+              };
+            }
+            return base;
+          })()
+        }
       >
         <Suspense fallback={null}>
           <Environment

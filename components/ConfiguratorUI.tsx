@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { MetalType, GemType, SkinTone, RingModelType } from "../types/index";
 import { OptionGrid, OptionItemData } from "./Configurator/OptionGrid";
+import { OptionItem } from "./Configurator/OptionItem";
 import {
   createMetalOptions,
   createGemOptions,
@@ -97,12 +98,63 @@ export const ConfiguratorUI: React.FC<ConfiguratorUIProps> = React.memo(
 
     const [isOpen, setIsOpen] = useState<boolean>(false);
 
+    // mounted/visibility state for animated show/hide
+    const [isMounted, setIsMounted] = useState<boolean>(!!isOpen);
+    const [isVisible, setIsVisible] = useState<boolean>(!!isOpen);
+
+    const [isMobile, setIsMobile] = useState<boolean>(false);
+
     // sync with external control from parent App
     useEffect(() => {
       if (typeof externalOpen !== 'undefined' && externalOpen !== isOpen) {
         setIsOpen(!!externalOpen);
       }
     }, [externalOpen]);
+
+    // manage mount + visibility for slide animation when isOpen changes
+    useEffect(() => {
+      let timeoutId: any;
+      if (isOpen) {
+        setIsMounted(true);
+        // small delay to ensure the element is in the DOM for transition
+        timeoutId = setTimeout(() => setIsVisible(true), 10);
+        if (onOpen) onOpen();
+      } else {
+        // trigger hide animation
+        setIsVisible(false);
+        // unmount after transition
+        timeoutId = setTimeout(() => {
+          setIsMounted(false);
+          if (onClose) onClose();
+        }, 300);
+      }
+      return () => clearTimeout(timeoutId);
+    }, [isOpen, onOpen, onClose]);
+
+    // computed wrapper classes/styles for responsive/mobile behavior
+    const wrapperStyle = isMobile ? {} : { marginLeft: '300px' };
+    const wrapperClasses = isMobile
+      ? `fixed left-0 right-0 bottom-0 z-50 transition-transform duration-300 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`
+      : `fixed left-1/2 bottom-6 transform -translate-x-1/2 z-50 transition-transform duration-300 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`;
+
+    useEffect(() => {
+      if (typeof window === 'undefined') return;
+      const mq = window.matchMedia?.('(max-width: 640px)');
+      const handler = (e: MediaQueryList | MediaQueryListEvent) => setIsMobile((e as any).matches ?? (e as MediaQueryList).matches);
+      if (mq) {
+        setIsMobile(mq.matches);
+        if (mq.addEventListener) mq.addEventListener('change', handler as any);
+        else mq.addListener(handler as any);
+        return () => {
+          if (mq.removeEventListener) mq.removeEventListener('change', handler as any);
+          else mq.removeListener(handler as any);
+        };
+      }
+      const onResize = () => setIsMobile(window.innerWidth <= 640);
+      onResize();
+      window.addEventListener('resize', onResize);
+      return () => window.removeEventListener('resize', onResize);
+    }, []);
 
     const metalOptions = useMemo(() => createMetalOptions(), []);
     const gemOptions = useMemo(() => createGemOptions(), []);
@@ -153,7 +205,9 @@ export const ConfiguratorUI: React.FC<ConfiguratorUIProps> = React.memo(
       { value: "quality", label: "Fire", previewImage: "/assets/images/fire.webp" },
     ], []);
 
-    const [activeTab, setActiveTab] = useState<'gem' | 'shape'>('gem');
+    const ringModelOptions = useMemo(() => createRingModelOptions(), []);
+
+    const [activeTab, setActiveTab] = useState<'gem' | 'shape' | 'ring' | 'render'>('gem');
 
     const handleMetalSelect = useCallback((value: MetalType | boolean) => { if (typeof value !== 'boolean') setMetal(value); }, [setMetal]);
     const handleGemSelect = useCallback((value: GemType | boolean) => { if (typeof value !== 'boolean') setGem(value); }, [setGem]);
@@ -162,37 +216,107 @@ export const ConfiguratorUI: React.FC<ConfiguratorUIProps> = React.memo(
     const handleRingModelSelect = useCallback((value: RingModelType | boolean) => { if (typeof value !== 'boolean') setRingModel(value); }, [setRingModel]);
     const handleRenderModeSelect = useCallback((value: 'performance' | 'quality' | boolean) => { if (typeof value !== 'boolean') setRenderMode(value); }, [setRenderMode]);
 
+    if (!isMounted) return null;
+
     return (
       <>
-        
-          {/* Customize button moved to App for both mobile and desktop to avoid blocking scene interaction */}
-
-        <div className={`fixed left-1/2 bottom-8 transform -translate-x-1/2 z-50 w-full sm:w-[400px] md:w-[450px] lg:w-[520px] ml-0 sm:ml-[250px] md:ml-[350px] lg:ml-[480px] transition-transform duration-300 ease-out ${isOpen ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-full opacity-0 pointer-events-none'}`}>
-          <div className="bg-white rounded-3xl shadow-2xl p-3">
-            <div className="flex items-center justify-end">
-              <button onClick={() => { setIsOpen(false); onClose?.(); }} className="w-9 h-9 rounded-full bg-gray-800 text-white flex items-center justify-center">✕</button>
-            </div>
-
-            <div className="mt-4">
-              <div className="flex gap-3 bg-gray-100 p-2 rounded-full">
-                <button onClick={() => setActiveTab('gem')} className={`px-3 py-1 rounded-full text-sm font-medium ${activeTab === 'gem' ? 'bg-white text-black' : 'text-gray-600'}`}>Gemstone</button>
-                <button onClick={() => setActiveTab('shape')} className={`px-3 py-1 rounded-full text-sm font-medium ${activeTab === 'shape' ? 'bg-white text-black' : 'text-gray-600'}`}>Diamond shape</button>
-              </div>
-
-              <div className="mt-4 max-h-[260px] overflow-auto">
-                <div className="space-y-4">
-                  {activeTab === 'gem' && (
-                    <OptionGrid title="Gemstone" options={gemOptions} selectedValue={gem} onSelect={handleGemSelect} />
-                  )}
-
-                  {activeTab === 'shape' && (
-                    <OptionGrid title="Diamond Shape" options={diamondShapeOptions} selectedValue={diamondShape} onSelect={handleDiamondShapeSelect} />
-                  )}
-
-                  <OptionGrid title="Render Mode" options={renderModeOptions} selectedValue={renderMode} onSelect={handleRenderModeSelect} />
+        <div style={wrapperStyle} className={wrapperClasses}>
+          <button
+            aria-label="Close configurator"
+            onClick={() => {
+              setIsOpen(false);
+              if (onClose) onClose();
+            }}
+            className="absolute top-3 right-3 z-60 w-9 h-9 bg-white rounded-full shadow-md flex items-center justify-center text-sm md:top-4 md:right-6"
+          >
+            ✕
+          </button>
+          {/* Gemstone + Render Mode on top */}
+          <div className={`mt-3 mx-auto w-full ${isMobile ? 'max-w-full px-4' : 'max-w-[520px]'}`}>
+            {/* Top area: show Diamond Shape (when selected) or horizontal Gemstone row */}
+            {activeTab === 'shape' ? (
+              <div>
+                <div className="flex items-center justify-start gap-4 overflow-x-auto py-2 px-1">
+                  {diamondShapeOptions.map((opt) => (
+                    <div key={opt.value} className="flex-shrink-0">
+                      <OptionItem
+                        value={opt.value as any}
+                        label={opt.label}
+                        isActive={diamondShape === opt.value}
+                        onClick={() => handleDiamondShapeSelect(opt.value as any)}
+                        previewImage={opt.previewImage}
+                        imageOnly={true}
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
+            ) : (activeTab === 'gem' || activeTab === 'ring') ? (
+              <div>
+                <div className="flex items-center justify-center gap-4 overflow-x-auto py-2">
+                  {gemOptions.map((opt) => (
+                    <div key={opt.value} className="flex-shrink-0">
+                      <OptionItem
+                        value={opt.value as any}
+                        label={opt.label}
+                        isActive={gem === opt.value}
+                        onClick={() => handleGemSelect(opt.value as any)}
+                        previewImage={opt.previewImage}
+                        imageOnly={true}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {activeTab === 'render' && (
+              <div className="mt-2 flex items-center justify-center">
+                <div>
+                  <div className="flex items-center justify-center gap-4">
+                    {renderModeOptions.map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => handleRenderModeSelect(opt.value as any)}
+                          className={`w-12 h-12 bg-white rounded-full border border-gray-100 flex items-center justify-center transition-shadow duration-200 ${renderMode === opt.value ? 'ring-2 ring-blue-500 shadow-[0_8px_30px_rgba(59,130,246,0.25)]' : 'shadow-sm'}`}
+                        >
+                          {opt.previewImage ? (
+                            <img src={opt.previewImage} alt={opt.label} className="w-9 h-9 object-contain rounded-full" draggable={false} />
+                          ) : (
+                            <span className="w-7 h-7 bg-gray-50 rounded-full" />
+                          )}
+                        </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-3 flex items-center justify-center">
+            <div className={`bg-white/80 backdrop-blur-md ${isMobile ? 'rounded-t-xl w-full px-4 py-3' : 'rounded-full px-3 py-1'} flex gap-2 shadow-sm justify-center`}>
+                {[
+                  { key: 'ring', label: 'Gem stone' },
+                  { key: 'diamond', label: 'Diamond shape' },
+                  { key: 'render', label: 'Render' },
+                ].map((t) => (
+                  <button
+                    key={t.key}
+                    onClick={() => {
+                      if (t.key === 'diamond') setActiveTab('shape');
+                      else if (t.key === 'ring') setActiveTab('ring');
+                      else if (t.key === 'render') setActiveTab('render');
+                    }}
+                    className={`px-6 py-2 min-w-[145px] text-center whitespace-normal leading-tight rounded-full text-sm font-medium ${((t.key === 'diamond' && activeTab === 'shape') || (t.key === 'ring' && activeTab === 'ring') || (t.key === 'render' && activeTab === 'render')) ? 'bg-white text-black' : 'text-gray-600'}`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
             </div>
+          </div>
+
+          <div className={`mt-3 mx-auto w-full ${isMobile ? 'max-w-full px-4' : 'max-w-[520px]'}`}>
+            {/* Ring Model grid intentionally hidden to avoid placeholder icons */}
           </div>
         </div>
       </>

@@ -25,8 +25,9 @@ const BUTTON_DISABLED_CLASSES = "bg-white/30 border-gray-200 opacity-40 cursor-n
 const BUTTON_BLACK_ACTIVE_CLASSES = "bg-white border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]";
 const BUTTON_BLACK_INACTIVE_CLASSES = "bg-white border-gray-200 hover:bg-white/90 hover:border-gray-300";
 const BUTTON_BLACK_DISABLED_CLASSES = "bg-white/30 border-gray-200 opacity-60 cursor-not-allowed";
-const IMAGE_BASE_CLASSES = "w-10 h-10 object-contain transition-transform duration-300";
-const IMAGE_ROUND_CLASSES = "w-12 h-12 object-cover rounded-full transition-transform duration-300";
+const IMAGE_BASE_CLASSES = "w-10 h-10 transition-transform duration-300";
+const IMAGE_ROUND_CLASSES = "w-12 h-12 rounded-full transition-transform duration-300";
+const IMAGE_ROUND_SMALL = "w-9 h-9 object-fill rounded-full transition-transform duration-300";
 const BUTTON_IMAGE_BASE = "relative group flex items-center justify-center w-full aspect-square transition-all duration-300";
 const BUTTON_IMAGE_INACTIVE = "bg-transparent border-none p-0";
 const BUTTON_IMAGE_ACTIVE = "bg-transparent border-none p-0 rounded-full";
@@ -103,7 +104,7 @@ export const OptionItem = memo(<T extends string>({
                         <img
                             src={previewImage}
                             alt={label}
-                            className={`${IMAGE_ROUND_CLASSES} ${isActive ? 'ring-2 ring-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.35)]' : ''} ${isActive ? SCALE_ACTIVE : ''} ${SCALE_HOVER}`}
+                            className={`${imageOnly ? IMAGE_ROUND_SMALL : IMAGE_ROUND_CLASSES} ${isActive ? 'ring-2 ring-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.35)]' : ''} ${isActive ? SCALE_ACTIVE : ''} ${SCALE_HOVER}`}
                             draggable={false}
                         />
                     ) : (

@@ -1,4 +1,44 @@
 import React, { useState, useEffect } from 'react';
+interface MobileSpecsProps {
+  active: string | null;
+  setActive: (s: string | null) => void;
+  isConfiguratorOpen?: boolean;
+}
+
+const MobileSpecs: React.FC<MobileSpecsProps> = ({ active, setActive, isConfiguratorOpen }) => {
+  // When configurator is open on mobile, do not render the mobile specs
+  if (isConfiguratorOpen) return null;
+
+  return (
+    <>
+      <div className="md:hidden fixed bottom-10 left-0 w-full z-40">
+        <div className="overflow-x-auto px-4 py-2">
+          <div className="flex gap-3 items-center w-max snap-x snap-mandatory">
+            {ITEMS_SIMPLE.map((label) => (
+              <button
+                key={`mobile-${label}`}
+                onClick={() => setActive(active === label ? null : label)}
+                className={`flex-shrink-0 flex items-center gap-2 bg-[#f3f4f6] text-[#333333] px-3 py-2 rounded-full shadow-sm hover:scale-[1.02] transition-transform ${
+                  active === label ? 'ring-2 ring-indigo-400' : ''
+                }`}
+                draggable={false}
+              >
+                <span className="w-5 h-5 flex items-center justify-center bg-white border border-[#d1d5db] rounded-full text-xs">+</span>
+                <span className="text-sm font-medium">{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {active ? (
+        <div className="md:hidden fixed left-4 right-4 bottom-10 z-50">
+          <Panel label={active} onClose={() => setActive(null)} />
+        </div>
+      ) : null}
+    </>
+  );
+};
 
 const ITEMS_SIMPLE = ['Cut', 'Clarity', 'Color', 'Carat', 'Brilliance', 'Fire', 'Scintillation'];
 
@@ -81,7 +121,7 @@ const Panel: React.FC<{ label: string; onClose: () => void }> = ({ label, onClos
   );
 };
 
-export const DiamondSpecs: React.FC = () => {
+export const DiamondSpecs: React.FC<{ isConfiguratorOpen?: boolean }> = ({ isConfiguratorOpen }) => {
   const [active, setActive] = useState<string | null>(null);
 
   return (
@@ -117,32 +157,7 @@ export const DiamondSpecs: React.FC = () => {
       </div>
 
       {/* Mobile horizontal scroller placed below the ring model */}
-      <div className="md:hidden fixed bottom-10 left-0 w-full z-40">
-        <div className="overflow-x-auto px-4 py-2">
-          <div className="flex gap-3 items-center w-max snap-x snap-mandatory">
-            {ITEMS_SIMPLE.map((label) => (
-              <button
-                key={`mobile-${label}`}
-                onClick={() => setActive(active === label ? null : label)}
-                className={`flex-shrink-0 flex items-center gap-2 bg-[#f3f4f6] text-[#333333] px-3 py-2 rounded-full shadow-sm hover:scale-[1.02] transition-transform ${
-                  active === label ? 'ring-2 ring-indigo-400' : ''
-                }`}
-                draggable={false}
-              >
-                <span className="w-5 h-5 flex items-center justify-center bg-white border border-[#d1d5db] rounded-full text-xs">+</span>
-                <span className="text-sm font-medium">{label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile panel shown above scroller when an item is active */}
-      {active ? (
-        <div className="md:hidden fixed left-4 right-4 bottom-10 z-50">
-          <Panel label={active} onClose={() => setActive(null)} />
-        </div>
-      ) : null}
+      <MobileSpecs active={active} setActive={setActive} isConfiguratorOpen={isConfiguratorOpen} />
     </>
   );
 };
